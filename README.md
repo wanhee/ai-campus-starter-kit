@@ -30,7 +30,7 @@
    git checkout -b feature/todo-service
    ```
 2. **AI 에이전트로 기능 구현**:
-   * 평소 사용하시는 AI 도구(Cursor, Claude Code, ChatGPT, Copilot 등)에 `templates/PROMPT_PRESETS.md`의 프롬프트를 복사하여 `main.py`에 필수 기능을 구현합니다.
+   * 평소 사용하시는 AI 도구(Cursor, Claude Code, ChatGPT, Copilot 등)에 [`prompts/01_session1_toy_project_todo.md`](./prompts/01_session1_toy_project_todo.md)의 프롬프트를 복사하여 `main.py`에 필수 기능을 구현합니다. (날씨, 게시판 등 다른 주제는 [`prompts/`](./prompts/) 디렉토리 참고)
    * 로컬 서버 구동 테스트: `uvicorn main:app --reload --port 8000` (Swagger UI: `http://localhost:8000/docs`)
 3. **커밋 & 푸시 후 GitHub에서 PR 생성**:
    ```bash
@@ -42,7 +42,7 @@
 4. **AI PR Reviewer의 자동 리뷰 확인**:
    * GitHub Actions 봇이 30초 내로 **CWE-89(SQLi), CWE-798(키 하드코딩), CWE-327(취약 해시), SLA 성능 병목** 4대 결함을 지적하며 반려(REQUEST_CHANGES)하는 것을 확인합니다.
 5. **AI 자율 치유 (Self-Healing) & 머지**:
-   * AI에게 리뷰 피드백을 전달하여 코드를 수정하게 한 뒤 다시 푸시합니다.
+   * [`prompts/05_session1_pr_review_self_heal.md`](./prompts/05_session1_pr_review_self_heal.md) 프롬프트를 AI에게 전달하여 코드를 수정하게 한 뒤 다시 푸시합니다.
    * **100% Green (APPROVE)** 통과 확인 후 `main`에 머지합니다.
 
 ---
@@ -54,9 +54,9 @@
    ```
    * AST 정적 보안 린터(Stage 1), 단위 테스트(Stage 2), SLA 응답 지연 벤치마크(Stage 3) 검증 결과를 확인합니다.
 2. **사내 엔지니어링 표준 규칙(`harness/AGENTS.md`) 기반 자율 리팩토링**:
-   * AI 에이전트에게 `harness_report.json`과 `harness/AGENTS.md` 규칙을 전달하여, 하네스가 100% 통과할 때까지 코드를 자율 수정하도록 지시합니다.
+   * AI 에이전트에게 [`prompts/06_session2_harness_self_heal.md`](./prompts/06_session2_harness_self_heal.md) 프롬프트를 전달하여, 하네스가 100% 통과할 때까지 코드를 자율 수정하도록 지시합니다.
 3. **상위 10% 포트폴리오 완성**:
-   * 하네스 100% Green 통과 후, `templates/README_PORTFOLIO_TEMPLATE.md` 내용을 참고하여 본인 저장소의 `README.md`를 Before vs After 성능 개선 수치가 포함된 고품격 포트폴리오로 교체합니다.
+   * 하네스 100% Green 통과 후, [`prompts/07_session2_portfolio_readme.md`](./prompts/07_session2_portfolio_readme.md) 프롬프트를 사용하여 본인 저장소의 `README.md`를 Before vs After 성능 개선 수치가 포함된 고품격 포트폴리오로 교체합니다.
 
 ---
 
@@ -69,8 +69,16 @@
 ├── harness/
 │   ├── check_harness.py          # 3대 하네스(보안 AST + 단위테스트 + SLA 지연) 검증 스크립트
 │   └── AGENTS.md                 # 사내 표준 엔지니어링 규칙 헌법
+├── prompts/                      # 💡 단계별 복사용 실습 프롬프트 모음 (01~07)
+│   ├── 01_session1_toy_project_todo.md
+│   ├── 02_session1_toy_project_weather.md
+│   ├── 03_session1_toy_project_board.md
+│   ├── 04_session1_toy_project_custom.md
+│   ├── 05_session1_pr_review_self_heal.md
+│   ├── 06_session2_harness_self_heal.md
+│   ├── 07_session2_portfolio_readme.md
+│   └── README.md
 ├── templates/
-│   ├── PROMPT_PRESETS.md         # 세션 1 토이 프로젝트 구현용 프롬프트 모음
 │   └── README_PORTFOLIO_TEMPLATE.md # 세션 2 완성 포트폴리오 템플릿
 ├── main.py                       # 초기 시드 코드 (FastAPI + SQLite)
 ├── requirements.txt              # 기본 의존성 목록
