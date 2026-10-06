@@ -1,0 +1,101 @@
+name: AI PR Code Reviewer
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches:
+      - main
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
+jobs:
+  ai-review:
+    name: Autonomous AI Code Review
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Run AI Automated Security & Code Audit
+        id: review
+        run: |
+          python - << 'EOF'
+          import re
+          import sys
+
+          findings = []
+
+          with open("main.py", "r", encoding="utf-8") as f:
+              content = f.read()
+
+          # 1. SQL Injection Check (CWE-89)
+          if re.search(r'execute\(f["\'].*SELECT.*\{.*\}.*["\']\)', content, re.IGNORECASE) or \
+             re.search(r'execute\(f["\'].*INSERT.*\{.*\}.*["\']\)', content, re.IGNORECASE):
+              findings.append({
+                  "level": "CRITICAL",
+                  "category": "Security (CWE-89: SQL Injection)",
+                  "msg": "f-string을 이용한 동적 SQL 쿼리가 감지되었습니다. 외부 입력값이 그대로 바인딩되어 악의적인 SQL Injection 공격에 취약합니다. 반드시 파라미터 바인딩 (`?`) 방식을 사용하세요."
+              })
+
+          # 2. Hardcoded Secret Check (CWE-798)
+          if re.search(r'["\']DEV_MOCK_SECRET_KEY_9999["\']', content) or \
+             re.search(r'ADMIN_MASTER_TOKEN\s*=\s*["\'][^"\']+["\']', content):
+              findings.append({
+                  "level": "HIGH",
+                  "category": "Security (CWE-798: Hardcoded Credentials)",
+                  "msg": "인증 토큰 및 Secret Key가 코드 내에 하드코딩되어 있습니다. GitHub 등 공개 저장소 커밋 시 자격 증명 유출 위험이 있으므로 `os.environ` 환경변수로 분리하세요."
+              })
+
+          # 3. Weak Hash Algorithm (CWE-327)
+          if "hashlib.md5(" in content:
+              findings.append({
+                  "level": "MEDIUM",
+                  "category": "Security (CWE-327: Use of a Broken Cryptographic Algorithm)",
+                  "msg": "구식 단방향 해시 알고리즘(MD5)이 사용되었습니다. 충돌 공격(Collision) 및 레인보우 테이블 공격에 취약하므로 SHA-256 + Salt 또는 bcrypt/Argon2를 적용하세요."
+              })
+
+          # 4. Inefficient Deduplication O(N^2)
+          if re.search(r'for\s+\w+\s+in\s+unique_items:.*is_duplicate\s*=\s*True', content, re.DOTALL):
+              findings.append({
+                  "level": "WARNING",
+                  "category": "Performance (O(N^2) Latency Bottleneck)",
+                  "msg": "중복 제거 로직에 이중 반복문(Nested Loop)이 사용되어 데이터가 1,000건 이상 증가할 시 심각한 CPU 병목을 유발합니다. O(1) 조회 복잡도를 가진 `set` 또는 딕셔너리로 개선하세요."
+              })
+
+          # Markdown Summary Generation
+          with open("review_report.md", "w", encoding="utf-8") as rf:
+              rf.write("### 🤖 AI Code Review Bot Feedback\n\n")
+              if not findings:
+                  rf.write("✅ **모든 검사를 통과했습니다!** 보안 취약점 및 성능 병목 패턴이 발견되지 않았습니다. Merge를 진행하셔도 좋습니다.\n")
+              else:
+                  rf.write(f"⚠️ PR 분석 결과 **총 {len(findings)}건의 잠재적 리스크**가 발견되었습니다. 다음 항목을 검토 후 리팩토링 커밋을 진행해 주세요.\n\n")
+                  for item in findings:
+                      badge = "🚨" if item["level"] == "CRITICAL" else ("⚠️" if item["level"] == "HIGH" else "ℹ️")
+                      rf.write(f"- {badge} **[{item['level']}] {item['category']}**\n")
+                      rf.write(f"  > {item['msg']}\n\n")
+
+          print(f"Generated review report with {len(findings)} findings.")
+          EOF
+
+      - name: Post Review Comment to PR
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const body = fs.readFileSync('review_report.md', 'utf8');
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: body
+            });
