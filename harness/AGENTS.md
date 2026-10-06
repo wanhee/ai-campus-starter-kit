@@ -26,9 +26,10 @@
 - **Loop Complexity**:
   - Avoid nested $O(N^2)$ loops over unbounded user collections.
   - For repeated lookups, convert Lists to Hash Sets (`set()`) or Dictionaries (`dict`) for $O(1)$ operations.
-- **Database Indexing**:
+- **Database Indexing & Concurrency (CWE-400)**:
   - Any column frequently queried in `WHERE`, `ORDER BY`, or `JOIN` must be indexed.
   - Verify query execution plans with `EXPLAIN` to prevent Full Table Scans.
+  - SQLite default Rollback Journal blocks concurrent writers and leads to `database is locked` (HTTP 500) errors under high concurrency. Always enable Write-Ahead Logging (`PRAGMA journal_mode=WAL;`) and configure a busy timeout (`PRAGMA busy_timeout=5000;`) to ensure non-blocking concurrent writes.
 
 ---
 

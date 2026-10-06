@@ -15,6 +15,7 @@
    - 하드코딩된 Secret/Token은 os.getenv() 및 안전한 기본값으로 격리
    - 모든 SQL 쿼리는 SQLite 파라미터화 바인딩(?) 표준으로 수정
    - O(N^2) 선형 탐색 로직은 set()을 이용한 O(1) 해시 룩업으로 최적화
+   - 동시성 DB 락(database is locked) 병목 방어를 위해 SQLite WAL 모드(PRAGMA journal_mode=WAL) 및 busy_timeout 설정
 3. tests/test_api.py 파일을 생성하고 pytest 기반의 단위 테스트 4개 이상을 작성해라:
    - 기본 CRUD 정상 동작 검증
    - SQL Injection 공격 구문 입력 시 DB가 보호되는지 검증

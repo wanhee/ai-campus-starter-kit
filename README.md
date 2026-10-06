@@ -52,10 +52,15 @@
    ```bash
    python3 harness/check_harness.py
    ```
-   * AST 정적 보안 린터(Stage 1), 단위 테스트(Stage 2), SLA 응답 지연 벤치마크(Stage 3) 검증 결과를 확인합니다.
-2. **사내 엔지니어링 표준 규칙(`harness/AGENTS.md`) 기반 자율 리팩토링**:
+   * AST 정적 보안 린터(Stage 1), 단위 테스트(Stage 2), SLA 응답 지연 & DB 동시성 벤치마크(Stage 3) 검증 결과를 확인합니다.
+2. **동시성 락 & 부하 시뮬레이션 (Before vs After 계측)**:
+   ```bash
+   python3 harness/simulate_load.py
+   ```
+   * 동시 쓰기 요청 시 SQLite 기본 락 병목(~34% 500 에러)과 WAL 모드 전환 후 무장애 완주(0.00% 에러율) 정량 지표를 측정합니다.
+3. **사내 엔지니어링 표준 규칙(`harness/AGENTS.md`) 기반 자율 리팩토링**:
    * AI 에이전트에게 [`prompts/06_session2_harness_self_heal.md`](./prompts/06_session2_harness_self_heal.md) 프롬프트를 전달하여, 하네스가 100% 통과할 때까지 코드를 자율 수정하도록 지시합니다.
-3. **상위 10% 포트폴리오 완성**:
+4. **상위 10% 포트폴리오 완성**:
    * 하네스 100% Green 통과 후, [`prompts/07_session2_portfolio_readme.md`](./prompts/07_session2_portfolio_readme.md) 프롬프트를 사용하여 본인 저장소의 `README.md`를 Before vs After 성능 개선 수치가 포함된 고품격 포트폴리오로 교체합니다.
 
 ---
@@ -68,6 +73,7 @@
 │       └── ai_pr_review.yml      # Zero-Key AI PR 자동 리뷰어 워크플로우
 ├── harness/
 │   ├── check_harness.py          # 3대 하네스(보안 AST + 단위테스트 + SLA 지연) 검증 스크립트
+│   ├── simulate_load.py          # 동시성 락(Lock) & 부하 시뮬레이션(Before vs After) 계측 스크립트
 │   └── AGENTS.md                 # 사내 표준 엔지니어링 규칙 헌법
 ├── prompts/                      # 💡 단계별 복사용 실습 프롬프트 모음 (01~07)
 │   ├── 01_session1_toy_project_todo.md

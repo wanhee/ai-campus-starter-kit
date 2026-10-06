@@ -14,7 +14,8 @@
 2. [아키텍처 다이어그램]: Mermaid flowchart로 [Client -> FastAPI -> SQLite -> 3대 하네스 방어선] 도식화
 3. [Before vs After 정량적 성능 지연 개선표]:
    - O(N^2) 중첩 루프 vs O(1) Hash Set 룩업
-   - 1,000건 동시 요청 시 응답 지연 시간(Latency) 단축 수치
+   - SQLite 동시성 파일 락(~34% 500 에러) vs WAL 모드 전환(0.00% 무장애 완주)
+   - 1,000건 동시 요청 시 응답 지연 시간(Latency) 및 처리량(RPS) 단축 수치
 4. [보안 가드레일 (CWE Top 25 방어 내역)]:
    - CWE-89 (SQL Injection) -> SQLite 파라미터 바인딩
    - CWE-798 (하드코딩 자격증명) -> os.getenv 환경변수 격리

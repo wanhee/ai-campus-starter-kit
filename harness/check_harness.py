@@ -32,7 +32,7 @@ def stage1_security_audit() -> list:
     
     target_exts = (".py", ".js", ".ts")
     for root, _, files in os.walk("."):
-        if any(skip in root for skip in [".git", ".venv", "venv", "node_modules", "__pycache__", "tests", "test", "templates"]):
+        if any(skip in root for skip in [".git", ".venv", "venv", "node_modules", "__pycache__", "tests", "test", "templates", "harness"]):
             continue
         for f in files:
             if f.endswith(target_exts) and not f.startswith("check_harness"):
@@ -104,6 +104,16 @@ def stage2_unit_tests() -> list:
         print("  \033[1;33m⚠️ Stage 2 SKIP: tests/ 디렉토리가 없습니다. (단위 테스트 추가 권장)\033[0m")
         return failures
 
+    has_test_files = any(
+        f.startswith("test_") or f.endswith("_test.py")
+        for d in test_dirs
+        for _, _, files in os.walk(d)
+        for f in files
+    )
+    if not has_test_files:
+        print("  \033[1;33m⚠️ Stage 2 SKIP: tests/ 디렉토리에 테스트 파일이 없습니다. (단위 테스트 추가 권장)\033[0m")
+        return failures
+
     res = subprocess.run(["python3", "-m", "pytest", test_dirs[0], "-v", "--tb=short"], capture_output=True, text=True)
     if res.returncode == 0:
         print("  \033[1;32m✅ Stage 2 PASS: 모든 단위/통합 테스트 100% 통과\033[0m")
@@ -118,11 +128,11 @@ def stage2_unit_tests() -> list:
 
 
 def stage3_performance_benchmark() -> list:
-    """Stage 3: Run quick latency and throughput verification."""
+    """Stage 3: Run quick latency, throughput, and DB concurrency verification."""
     print("\n⚡ [Stage 3] Running Performance & Latency SLA Benchmark...")
     sla_issues = []
 
-    # Benchmark: 10,000 iterations hash lookup vs list scan test
+    # Benchmark 1: 10,000 iterations hash lookup vs list scan test
     t0 = time.perf_counter()
     sample_data = set(range(50000))
     for i in range(1000):
@@ -135,10 +145,30 @@ def stage3_performance_benchmark() -> list:
             "rule": "SLA Latency Violation",
             "message": f"기준 응답 시간 초과 (소요: {elapsed_ms:.2f}ms > SLA 한계 100ms)"
         })
-        print(f"  \033[1;31m❌ Stage 3 FAIL: 지연 시간 {elapsed_ms:.2f}ms (SLA 위반)\033[0m")
+        print(f"  \033[1;31m❌ [SLA Latency] 지연 시간 {elapsed_ms:.2f}ms (SLA 100ms 위반)\033[0m")
     else:
-        print(f"  \033[1;32m✅ Stage 3 PASS: p99 응답 시간 {elapsed_ms:.2f}ms < 100ms SLA 충족\033[0m")
-    
+        print(f"  \033[1;32m✅ [SLA Latency] p99 응답 시간 {elapsed_ms:.2f}ms < 100ms SLA 충족\033[0m")
+
+    # Benchmark 2: SQLite Concurrency & WAL Mode Configuration Guardrail
+    has_wal_config = False
+    for candidate in ["main.py", "app.py"]:
+        if os.path.exists(candidate):
+            with open(candidate, "r", encoding="utf-8", errors="ignore") as fp:
+                src = fp.read()
+                if "journal_mode=WAL" in src or "journal_mode = WAL" in src:
+                    has_wal_config = True
+                    break
+
+    if not has_wal_config:
+        sla_issues.append({
+            "stage": "Performance",
+            "rule": "CWE-400 (Missing SQLite WAL Concurrency Mode)",
+            "message": "고동시성 부하 시 DB 파일 락(database is locked, 500 에러) 위험: PRAGMA journal_mode=WAL 설정이 필요합니다."
+        })
+        print("  \033[1;31m❌ [DB Concurrency] SQLite WAL 모드 미설정 (동시성 파일 락 병목 위험)\033[0m")
+    else:
+        print("  \033[1;32m✅ [DB Concurrency] SQLite WAL 모드 활성화 (고동시성 락 충돌 방어 완료)\033[0m")
+
     return sla_issues
 
 

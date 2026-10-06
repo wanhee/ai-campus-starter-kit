@@ -17,9 +17,9 @@ flowchart LR
     C --> D[(DB / Redis 캐시)]
     
     subgraph Harness ["🛡️ Automated Quality Harness"]
-        E[AST 보안 린터]
+        E[AST 보안 린터 (check_harness.py)]
         F[Pytest 엣지케이스 검증]
-        G[k6 부하 & 지연 계측기]
+        G[동시성 락 & 부하 계측기 (simulate_load.py)]
     end
     
     C -. 검증 통과 .- Harness
@@ -52,9 +52,15 @@ flowchart LR
 - **CWE-89 방어**: `f-string` 문자열 결합 SQL을 원천 차단하고 ORM 파라미터 바인딩 강제.
 - **AST 정적 분석기**: Git 커밋 훅 및 GitHub Actions에 30줄 AST 린터를 연결하여 취약 코드가 푸시되면 자동 빌드 실패(Red Gate) 유도.
 
-### (3) AI 에이전트 Self-Healing 파이프라인
-- 로컬 하네스(`check_harness.py`)가 생성한 `harness_report.json` 실패 로그를 AI 에이전트에 역주입.
-- 에이전트가 `plan.md`를 발행하고 순수 함수 단위의 패치(`changes.diff`)를 생성하여 모든 테스트가 초록불(Green)이 될 때까지 스스로 코드를 자율 교정.
+### (3) 데이터베이스 동시성 락 방어: SQLite WAL 모드 전환
+- **문제점**: 기본 SQLite(Rollback Journal) 환경에서 다중 쓰기 트랜잭션 동시 유입 시 배타적 파일 락(Exclusive Lock) 충돌로 `34.2% 500 Server Error (database is locked)` 발생.
+- **해결책**:
+  - `PRAGMA journal_mode=WAL;`을 적용하여 읽기/쓰기 락 경합 해소.
+  - `PRAGMA busy_timeout=5000;` 설정으로 동시 트랜잭션 대기열 흡수 ➔ 부하 상황 에러율 **0.00% (무장애 완주)** 달성.
+
+### (4) AI 에이전트 Self-Healing 파이프라인
+- 로컬 하네스(`harness/check_harness.py`)가 생성한 `harness_report.json` 실패 로그를 AI 에이전트에 역주입.
+- 에이전트가 순수 함수 단위의 패치를 생성하여 모든 테스트가 초록불(Green)이 될 때까지 스스로 코드를 자율 교정.
 
 ---
 
@@ -68,10 +74,13 @@ python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 
-# 2. 하네스 자동 검증 실행 (Security + Tests + SLA Benchmark)
-python3 check_harness.py
+# 2. 동시성 부하 시뮬레이션 (Before vs After 정량 계측)
+python3 harness/simulate_load.py
 
-# 3. 테스트 슈트 실행
+# 3. 하네스 자동 검증 실행 (Security + Tests + SLA Benchmark)
+python3 harness/check_harness.py
+
+# 4. 테스트 슈트 실행
 pytest tests/ -v
 ```
 
